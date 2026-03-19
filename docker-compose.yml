@@ -1,31 +1,47 @@
 version: "3.9"
+
 services:
+
   postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: snap3d
       POSTGRES_USER: snap3d
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-snap3dsecret}
-    volumes: [postgres_data:/var/lib/postgresql/data]
-    ports: ["5432:5432"]
-    healthcheck: {test: ["CMD-SHELL","pg_isready -U snap3d"], interval: 5s, retries: 5}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U snap3d"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes
-    volumes: [redis_data:/data]
-    ports: ["6379:6379"]
-    healthcheck: {test: ["CMD","redis-cli","ping"], interval: 5s, retries: 5}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   api:
-    build: {context: ./backend, dockerfile: Dockerfile}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       DATABASE_URL: postgresql+asyncpg://snap3d:${POSTGRES_PASSWORD:-snap3dsecret}@postgres:5432/snap3d
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
-      SECRET_KEY: ${SECRET_KEY:-changeme}
+      SECRET_KEY: ${SECRET_KEY:-changeme-in-production}
       TRIPO3D_API_KEY: ${TRIPO3D_API_KEY:-}
       MESHY_API_KEY: ${MESHY_API_KEY:-}
       RECONSTRUCTION_PROVIDER: ${RECONSTRUCTION_PROVIDER:-tripo3d}
@@ -35,15 +51,21 @@ services:
       S3_REGION: ${S3_REGION:-us-east-1}
       S3_ENDPOINT: ${S3_ENDPOINT:-}
       APP_ENV: ${APP_ENV:-development}
-    ports: ["8000:8000"]
+    ports:
+      - "8000:8000"
     depends_on:
-      postgres: {condition: service_healthy}
-      redis: {condition: service_healthy}
-    volumes: [./backend:/app]
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
     restart: unless-stopped
 
   worker:
-    build: {context: ./backend, dockerfile: Dockerfile}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     command: celery -A app.worker.tasks worker --loglevel=info --concurrency=2
     environment:
       DATABASE_URL: postgresql+asyncpg://snap3d:${POSTGRES_PASSWORD:-snap3dsecret}@postgres:5432/snap3d
@@ -53,10 +75,18 @@ services:
       TRIPO3D_API_KEY: ${TRIPO3D_API_KEY:-}
       MESHY_API_KEY: ${MESHY_API_KEY:-}
       RECONSTRUCTION_PROVIDER: ${RECONSTRUCTION_PROVIDER:-tripo3d}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      S3_BUCKET: ${S3_BUCKET:-snap3d-files}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
     depends_on:
-      postgres: {condition: service_healthy}
-      redis: {condition: service_healthy}
-    volumes: [./backend:/app]
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
     restart: unless-stopped
 
   frontend:
@@ -64,8 +94,10 @@ services:
     volumes:
       - ./frontend:/usr/share/nginx/html:ro
       - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-    ports: ["3000:80"]
-    depends_on: [api]
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
 
 volumes:
   postgres_data:
