@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>snap3D · 图片转3D模型</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Nunito+Sans:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root {
+  --pink: #F472B6;
+  --pink-light: #FDF2F8;
+  --pink-mid: #FBCFE8;
+  --purple: #A78BFA;
+  --purple-deep: #7C3AED;
+  --purple-light: #F5F3FF;
+  --purple-mid: #DDD6FE;
+  --coral: #FB923C;
+  --coral-light: #FFF7ED;
+  --teal: #34D399;
+  --teal-light: #ECFDF5;
+  --red: #F87171;
+  --bg: #FEFCFF;
+  --bg2: #F9F5FF;
+  --text: #1E1B2E;
+  --text2: #6B6B8A;
+  --text3: #A8A8C0;
+  --border: rgba(167,139,250,0.18);
+  --border2: rgba(167,139,250,0.35);
+  --shadow: 0 4px 24px rgba(124,58,237,0.10);
+  --shadow-pop: 0 8px 40px rgba(124,58,237,0.18);
+  --r: 20px;
+  --r-sm: 12px;
+  --r-xs: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: #EDE8FF; font-family: 'Nunito', sans-serif; }
+
+/* ---- PHONE SHELL ---- */
+.phone-shell {
+  width: 390px; min-height: 844px;
+  background: var(--bg);
+  border-radius: 44px;
+  box-shadow: 0 32px 80px rgba(80,40,160,0.22), 0 0 0 2px rgba(167,139,250,0.3), inset 0 0 0 1px rgba(255,255,255,0.7);
+  margin: 24px auto;
+  overflow: hidden;
+  position: relative;
+  display: flex; flex-direction: column;
+}
+.phone-notch {
+  width: 120px; height: 34px;
+  background: #1E1B2E;
+  border-radius: 0 0 22px 22px;
+  margin: 0 auto;
+  position: relative; z-index: 10;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.notch-dot { width: 10px; height: 10px; border-radius: 50%; background: #2a2740; }
+.notch-cam { width: 12px; height: 12px; border-radius: 50%; background: #0d0b18; border: 2px solid #1a1730; }
+.status-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 22px 0;
+  font-size: 12px; font-weight: 700; color: var(--text2);
+}
+
+/* ---- SCREENS ---- */
+.screen { display: none; flex-direction: column; flex: 1; overflow-y: auto; overflow-x: hidden; }
+.screen.active { display: flex; }
+.screen::-webkit-scrollbar { display: none; }
+
+/* ---- BOTTOM NAV ---- */
+.bottom-nav {
+  display: flex; justify-content: space-around; align-items: center;
+  padding: 12px 8px 20px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  position: sticky; bottom: 0; z-index: 100;
+}
+.nav-item {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  cursor: pointer; padding: 6px 16px; border-radius: 16px;
+  transition: all 0.2s;
+}
+.nav-item.active { background: var(--purple-light); }
+.nav-icon { font-size: 22px; line-height: 1; }
+.nav-label { font-size: 10px; font-weight: 700; color: var(--text3); }
+.nav-item.active .nav-label { color: var(--purple-deep); }
+
+/* ---- HOME SCREEN ---- */
+.home-header {
+  padding: 16px 22px 0;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.logo-text { font-size: 22px; font-weight: 900; color: var(--purple-deep); letter-spacing: -0.5px; }
+.logo-text span { color: var(--pink); }
+.avatar-btn {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: linear-gradient(135deg, #FDE68A 0%, #FCA5A5 100%);
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(252,165,165,0.4);
+}
+
+.home-hero { padding: 22px 22px 0; }
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--purple-light); border: 1px solid var(--purple-mid);
+  border-radius: 20px; padding: 5px 12px; margin-bottom: 12px;
+}
+.hero-badge span { font-size: 11px; font-weight: 700; color: var(--purple-deep); }
+.hero-h1 { font-size: 28px; font-weight: 900; color: var(--text); line-height: 1.25; letter-spacing: -0.5px; }
+.hero-h1 .accent { color: var(--purple-deep); }
+.hero-h1 .accent2 { color: var(--pink); }
+.hero-sub { font-size: 13px; color: var(--text2); margin-top: 8px; line-height: 1.6; font-family: 'Nunito Sans', sans-serif; }
+
+.upload-card {
+  margin: 18px 22px 0;
+  border: 2px dashed var(--purple-mid);
+  border-radius: var(--r);
+  background: linear-gradient(135deg, #FAF8FF 0%, #FEF2F8 100%);
+  padding: 28px 20px 24px;
+  text-align: center; cursor: pointer;
+  transition: all 0.25s; position: relative; overflow: hidden;
+}
+.upload-card:hover { border-color: var(--purple); background: linear-gradient(135deg, #F5F0FF 0%, #FDE8F5 100%); transform: translateY(-1px); box-shadow: var(--shadow); }
+.upload-card.drag-over { border-color: var(--purple-deep); border-style: solid; background: var(--purple-light); transform: scale(1.01); }
+.upload-sparkles { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; overflow: hidden; }
+.sparkle { position: absolute; width: 6px; height: 6px; border-radius: 50%; opacity: 0.4; animation: float 3s ease-in-out infinite; }
+.upload-icon-wrap {
+  width: 64px; height: 64px; border-radius: 20px;
+  background: linear-gradient(135deg, #EDE9FE 0%, #FCE7F3 100%);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 14px; font-size: 28px; box-shadow: 0 4px 16px rgba(124,58,237,0.15);
+}
+.upload-title { font-size: 15px; font-weight: 800; color: var(--purple-deep); margin-bottom: 4px; }
+.upload-sub { font-size: 12px; color: var(--text3); }
+.upload-actions { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
+.upload-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--purple-deep); color: white;
+  border: none; border-radius: 12px; padding: 8px 16px;
+  font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'Nunito', sans-serif;
+  transition: all 0.2s;
+}
+.upload-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(124,58,237,0.35); }
+.upload-btn.secondary { background: white; color: var(--purple-deep); border: 1.5px solid var(--purple-mid); }
+.fmt-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+.fmt-chip {
+  background: white; border: 1px solid var(--purple-mid);
+  color: var(--purple-deep); border-radius: 20px;
+  padding: 3px 10px; font-size: 11px; font-weight: 700;
+}
+
+.tip-banner {
+  margin: 14px 22px 0;
+  background: linear-gradient(135deg, #FFF7ED 0%, #FFFBF0 100%);
+  border: 1px solid #FED7AA; border-radius: var(--r-sm);
+  padding: 12px 16px; display: flex; align-items: flex-start; gap: 10px;
+}
+.tip-emoji { font-size: 20px; flex-shrink: 0; }
+.tip-text { font-size: 12px; color: #92400E; line-height: 1.6; font-family: 'Nunito Sans', sans-serif; }
+.tip-text strong { font-weight: 700; }
+
+.guide-section { padding: 18px 22px 0; }
+.section-hd { font-size: 13px; font-weight: 800; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+.guide-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.guide-row::-webkit-scrollbar { display: none; }
+.guide-card {
+  flex-shrink: 0; width: 82px; background: white;
+  border: 1px solid var(--border); border-radius: 16px;
+  padding: 12px 8px; text-align: center;
+  box-shadow: 0 2px 8px rgba(124,58,237,0.06);
+}
+.guide-num {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--purple-deep); color: white;
+  font-size: 10px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; margin: 0 auto 6px;
+}
+.guide-em { font-size: 22px; margin-bottom: 4px; }
+.guide-lbl { font-size: 10px; color: var(--text2); line-height: 1.4; font-weight: 600; }
+
+.recent-section { padding: 18px 22px 16px; }
+.recent-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.recent-row::-webkit-scrollbar { display: none; }
+.recent-card {
+  flex-shrink: 0; width: 110px; background: white;
+  border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+  cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(124,58,237,0.06);
+}
+.recent-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.recent-thumb {
+  height: 80px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px; position: relative;
+}
+.recent-status {
+  position: absolute; top: 6px; right: 6px;
+  background: var(--teal); color: white;
+  border-radius: 20px; padding: 2px 7px; font-size: 9px; font-weight: 700;
+}
+.recent-info { padding: 8px 8px 10px; }
+.recent-name { font-size: 11px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.recent-meta { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+/* ---- UPLOAD SCREEN ---- */
+.upload-screen { padding-bottom: 0; }
+.screen-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 22px;
+}
+.back-btn {
+  width: 36px; height: 36px; border-radius: 12px;
+  background: var(--purple-light); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+  transition: all 0.2s;
+}
+.back-btn:hover { background: var(--purple-mid); }
+.screen-title { font-size: 18px; font-weight: 800; color: var(--text); }
+
+.img-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px; padding: 0 22px;
+}
+.img-cell {
+  aspect-ratio: 1; border-radius: 12px; overflow: hidden;
+  background: var(--purple-light); position: relative; cursor: pointer;
+}
+.img-cell img { width: 100%; height: 100%; object-fit: cover; }
+.img-cell .del-btn {
+  position: absolute; top: 4px; right: 4px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(30,27,46,0.7); color: white;
+  border: none; cursor: pointer; font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+}
+.img-add-cell {
+  aspect-ratio: 1; border-radius: 12px;
+  border: 2px dashed var(--purple-mid); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  background: var(--purple-light); transition: all 0.2s;
+  font-size: 24px;
+}
+.img-add-cell:hover { border-color: var(--purple-deep); background: var(--purple-mid); }
+.img-add-label { font-size: 10px; font-weight: 700; color: var(--text3); }
+
+.img-count-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 22px 0;
+}
+.img-count { font-size: 13px; font-weight: 700; color: var(--text2); }
+.img-count span { color: var(--purple-deep); }
+
+.quality-section { padding: 16px 22px 0; }
+.quality-cards { display: flex; gap: 8px; margin-top: 10px; }
+.quality-opt {
+  flex: 1; border-radius: 14px; padding: 12px 8px; text-align: center;
+  border: 2px solid var(--border); cursor: pointer; transition: all 0.2s;
+  background: white;
+}
+.quality-opt.selected { border-color: var(--purple-deep); background: var(--purple-light); }
+.quality-opt .q-em { font-size: 20px; margin-bottom: 4px; }
+.quality-opt .q-name { font-size: 12px; font-weight: 800; color: var(--text); }
+.quality-opt .q-time { font-size: 10px; color: var(--text3); margin-top: 2px; }
+.quality-opt.selected .q-name { color: var(--purple-deep); }
+
+.generate-btn {
+  margin: 20px 22px 16px;
+  width: calc(100% - 44px); padding: 16px;
+  background: linear-gradient(135deg, var(--purple-deep) 0%, #9333EA 100%);
+  color: white; border: none; border-radius: var(--r);
+  font-size: 16px; font-weight: 800; cursor: pointer; font-family: 'Nunito', sans-serif;
+  box-shadow: 0 6px 24px rgba(124,58,237,0.35);
+  transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.generate-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(124,58,237,0.45); }
+.generate-btn:active { transform: scale(0.98); }
+.generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ---- PROGRESS SCREEN ---- */
+.progress-screen { padding-bottom: 0; }
+.progress-hero {
+  padding: 30px 22px 0; text-align: center;
+}
+.model-3d-container {
+  width: 200px; height: 200px; margin: 0 auto 20px;
+  border-radius: 50%; overflow: hidden;
+  background: linear-gradient(135deg, var(--purple-light) 0%, var(--pink-light) 100%);
+  position: relative; box-shadow: var(--shadow-pop);
+}
+#three-canvas { width: 100% !important; height: 100% !important; }
+.progress-title { font-size: 20px; font-weight: 900; color: var(--text); margin-bottom: 6px; }
+.progress-sub { font-size: 13px; color: var(--text2); line-height: 1.6; font-family: 'Nunito Sans', sans-serif; }
+.progress-phase {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--purple-light); border: 1px solid var(--purple-mid);
+  border-radius: 20px; padding: 5px 14px; margin-top: 10px;
+  font-size: 12px; font-weight: 700; color: var(--purple-deep);
+}
+.phase-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--purple-deep); animation: pulse 1.2s ease-in-out infinite; }
+
+.progress-bar-wrap {
+  margin: 20px 22px 0;
+  background: var(--purple-light); border-radius: 20px;
+  height: 12px; overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%; border-radius: 20px;
+  background: linear-gradient(90deg, var(--purple-deep), var(--pink));
+  transition: width 0.6s ease; position: relative; overflow: hidden;
+}
+.progress-bar-fill::after {
+  content: ''; position: absolute; top: 0; left: -100%; right: 0; bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: shimmer 1.5s infinite;
+}
+.progress-pct { text-align: center; margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--purple-deep); }
+
+.progress-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; padding: 16px 22px 0;
+}
+.stat-card {
+  background: white; border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 12px; text-align: center;
+  box-shadow: 0 2px 8px rgba(124,58,237,0.06);
+}
+.stat-val { font-size: 20px; font-weight: 900; color: var(--purple-deep); }
+.stat-lbl { font-size: 10px; color: var(--text3); margin-top: 3px; font-weight: 600; }
+
+.steps-timeline { padding: 20px 22px 0; }
+.step-item {
+  display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; position: relative;
+}
+.step-item:not(:last-child)::after {
+  content: ''; position: absolute; left: 12px; top: 26px;
+  width: 2px; bottom: -14px;
+  background: var(--border);
+}
+.step-dot {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 12px;
+  font-weight: 700; position: relative; z-index: 1;
+}
+.step-dot.done { background: var(--teal); color: white; }
+.step-dot.active { background: var(--purple-deep); color: white; animation: pulse 1.2s ease-in-out infinite; }
+.step-dot.pending { background: var(--border); color: var(--text3); }
+.step-info { padding-top: 3px; }
+.step-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.step-desc { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: 'Nunito Sans', sans-serif; }
+
+/* ---- PREVIEW SCREEN ---- */
+.preview-screen { padding-bottom: 0; }
+.model-preview-area {
+  background: linear-gradient(160deg, #F5F3FF 0%, #FDF2F8 60%, #F0FDF4 100%);
+  height: 260px; position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+#preview-canvas { width: 100%; height: 100%; }
+.view-controls {
+  position: absolute; bottom: 12px; right: 14px;
+  display: flex; gap: 6px;
+}
+.view-btn {
+  background: rgba(255,255,255,0.85); backdrop-filter: blur(8px);
+  border: 1px solid var(--border2); border-radius: 10px;
+  padding: 6px 12px; font-size: 11px; font-weight: 700; color: var(--text2);
+  cursor: pointer; transition: all 0.2s; font-family: 'Nunito', sans-serif;
+}
+.view-btn.active { background: var(--purple-deep); color: white; border-color: var(--purple-deep); }
+.quality-badge {
+  position: absolute; top: 12px; left: 14px;
+  background: rgba(255,255,255,0.85); backdrop-filter: blur(8px);
+  border: 1px solid var(--teal); border-radius: 10px;
+  padding: 5px 10px; font-size: 11px; font-weight: 700; color: #065F46;
+  display: flex; align-items: center; gap: 5px;
+}
+.model-info-card {
+  margin: 0 22px; margin-top: -16px;
+  background: white; border-radius: var(--r);
+  border: 1px solid var(--border); padding: 16px;
+  box-shadow: var(--shadow); position: relative; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.model-name { font-size: 15px; font-weight: 800; color: var(--text); }
+.model-meta { font-size: 11px; color: var(--text3); margin-top: 3px; font-family: 'Nunito Sans', sans-serif; }
+.model-score {
+  background: var(--teal-light); border: 1px solid rgba(52,211,153,0.3);
+  border-radius: 10px; padding: 6px 12px; text-align: center;
+}
+.score-num { font-size: 18px; font-weight: 900; color: #065F46; }
+.score-lbl { font-size: 9px; color: #059669; font-weight: 600; }
+
+.edit-tools { padding: 14px 22px 0; }
+.tool-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.tool-row::-webkit-scrollbar { display: none; }
+.tool-chip {
+  flex-shrink: 0; display: flex; align-items: center; gap: 6px;
+  background: white; border: 1px solid var(--border);
+  border-radius: 12px; padding: 8px 14px; cursor: pointer;
+  transition: all 0.2s; box-shadow: 0 1px 4px rgba(124,58,237,0.06);
+  font-family: 'Nunito', sans-serif;
+}
+.tool-chip:hover { border-color: var(--purple); background: var(--purple-light); }
+.tool-chip.active { border-color: var(--purple-deep); background: var(--purple-light); }
+.tool-em { font-size: 16px; }
+.tool-lbl { font-size: 12px; font-weight: 700; color: var(--text2); }
+.tool-chip.active .tool-lbl { color: var(--purple-deep); }
+
+.edit-panel {
+  margin: 12px 22px 0;
+  background: white; border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 14px;
+  box-shadow: 0 2px 8px rgba(124,58,237,0.06);
+}
+.slider-row { margin-bottom: 14px; }
+.slider-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.slider-name { font-size: 12px; font-weight: 700; color: var(--text2); }
+.slider-val { font-size: 12px; font-weight: 800; color: var(--purple-deep); }
+input[type=range] {
+  width: 100%; height: 5px;
+  background: var(--purple-mid); border-radius: 20px; outline: none;
+  -webkit-appearance: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--purple-deep); box-shadow: 0 2px 8px rgba(124,58,237,0.35);
+}
+.toggle-row { display: flex; justify-content: space-between; align-items: center; }
+.toggle-label { font-size: 12px; font-weight: 700; color: var(--text2); }
+.toggle-switch {
+  width: 40px; height: 22px; border-radius: 20px;
+  background: var(--border); position: relative; cursor: pointer; transition: all 0.25s;
+}
+.toggle-switch.on { background: var(--purple-deep); }
+.toggle-knob {
+  width: 18px; height: 18px; border-radius: 50%; background: white;
+  position: absolute; top: 2px; left: 2px; transition: all 0.25s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+.toggle-switch.on .toggle-knob { left: 20px; }
+
+.export-section { padding: 14px 22px 0; }
+.format-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.fmt-opt {
+  display: flex; align-items: center; gap: 6px;
+  background: white; border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 8px 14px; cursor: pointer;
+  transition: all 0.2s; font-family: 'Nunito', sans-serif;
+}
+.fmt-opt:hover { border-color: var(--purple); }
+.fmt-opt.selected { border-color: var(--purple-deep); background: var(--purple-light); }
+.fmt-name { font-size: 13px; font-weight: 800; color: var(--text); }
+.fmt-opt.selected .fmt-name { color: var(--purple-deep); }
+.fmt-tag-pro {
+  background: linear-gradient(135deg, #FDE68A, #FCA5A5);
+  border-radius: 6px; padding: 2px 6px; font-size: 9px; font-weight: 700; color: #78350F;
+}
+.fmt-desc { font-size: 10px; color: var(--text3); margin-top: 2px; font-family: 'Nunito Sans', sans-serif; }
+
+.action-btns {
+  display: flex; gap: 10px; padding: 16px 22px 16px;
+}
+.btn-dl {
+  flex: 1; padding: 14px;
+  background: linear-gradient(135deg, var(--purple-deep) 0%, #9333EA 100%);
+  color: white; border: none; border-radius: var(--r);
+  font-size: 14px; font-weight: 800; cursor: pointer; font-family: 'Nunito', sans-serif;
+  box-shadow: 0 4px 16px rgba(124,58,237,0.35); transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn-dl:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(124,58,237,0.4); }
+.btn-icon-sq {
+  width: 48px; height: 48px; border-radius: var(--r);
+  border: 1.5px solid var(--border2); background: white;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+  cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+}
+.btn-icon-sq:hover { background: var(--purple-light); border-color: var(--purple); }
+
+/* ---- PRINT SCREEN ---- */
+.printer-connect {
+  padding: 14px 22px 0;
+}
+.printer-hero {
+  background: linear-gradient(135deg, var(--purple-light), var(--pink-light));
+  border-radius: var(--r); padding: 24px; text-align: center; margin-bottom: 16px;
+}
+.printer-em { font-size: 48px; margin-bottom: 10px; }
+.printer-title { font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+.printer-sub { font-size: 12px; color: var(--text2); line-height: 1.6; font-family: 'Nunito Sans', sans-serif; }
+.printer-list { display: flex; flex-direction: column; gap: 10px; }
+.printer-card {
+  background: white; border: 1.5px solid var(--border);
+  border-radius: var(--r-sm); padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+  cursor: pointer; transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(124,58,237,0.05);
+}
+.printer-card:hover { border-color: var(--purple); box-shadow: var(--shadow); }
+.printer-card.connected { border-color: var(--teal); background: var(--teal-light); }
+.printer-icon { font-size: 28px; }
+.printer-info { flex: 1; }
+.printer-name { font-size: 13px; font-weight: 800; color: var(--text); }
+.printer-detail { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: 'Nunito Sans', sans-serif; }
+.printer-badge {
+  padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 700;
+}
+.printer-badge.conn { background: var(--teal-light); color: #065F46; border: 1px solid rgba(52,211,153,0.3); }
+.printer-badge.avail { background: var(--purple-light); color: var(--purple-deep); border: 1px solid var(--purple-mid); }
+.add-printer-btn {
+  width: 100%; padding: 14px; margin-top: 4px;
+  background: white; border: 2px dashed var(--purple-mid);
+  border-radius: var(--r-sm); color: var(--purple-deep);
+  font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'Nunito', sans-serif;
+  transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.add-printer-btn:hover { border-color: var(--purple-deep); background: var(--purple-light); }
+
+.slice-section { padding: 16px 22px 0; }
+.slice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.slice-opt {
+  background: white; border: 1.5px solid var(--border);
+  border-radius: var(--r-sm); padding: 12px;
+  cursor: pointer; transition: all 0.2s;
+}
+.slice-opt:hover { border-color: var(--purple); }
+.slice-opt.selected { border-color: var(--purple-deep); background: var(--purple-light); }
+.slice-label { font-size: 12px; font-weight: 800; color: var(--text); }
+.slice-opt.selected .slice-label { color: var(--purple-deep); }
+.slice-val { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+.send-to-printer-btn {
+  margin: 18px 22px 16px;
+  width: calc(100% - 44px); padding: 16px;
+  background: linear-gradient(135deg, #059669 0%, #10B981 100%);
+  color: white; border: none; border-radius: var(--r);
+  font-size: 15px; font-weight: 800; cursor: pointer; font-family: 'Nunito', sans-serif;
+  box-shadow: 0 6px 20px rgba(5,150,105,0.35);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all 0.2s;
+}
+.send-to-printer-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(5,150,105,0.45); }
+
+/* ---- LIBRARY SCREEN ---- */
+.library-search {
+  margin: 0 22px 14px;
+  background: white; border: 1.5px solid var(--border);
+  border-radius: 14px; padding: 10px 14px;
+  display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 2px 8px rgba(124,58,237,0.05);
+}
+.lib-search-icon { font-size: 16px; }
+.lib-search-input {
+  border: none; outline: none; font-size: 13px; color: var(--text);
+  font-family: 'Nunito', sans-serif; flex: 1; background: transparent;
+  font-weight: 600;
+}
+.lib-search-input::placeholder { color: var(--text3); }
+
+.lib-filter-row { display: flex; gap: 8px; padding: 0 22px; overflow-x: auto; margin-bottom: 14px; }
+.lib-filter-row::-webkit-scrollbar { display: none; }
+.filter-chip {
+  flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+  background: white; border: 1px solid var(--border);
+  font-size: 12px; font-weight: 700; color: var(--text2);
+  cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  font-family: 'Nunito', sans-serif;
+}
+.filter-chip.active { background: var(--purple-deep); color: white; border-color: var(--purple-deep); }
+
+.lib-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; padding: 0 22px 16px;
+}
+.lib-card {
+  background: white; border: 1px solid var(--border);
+  border-radius: var(--r-sm); overflow: hidden; cursor: pointer;
+  transition: all 0.2s; box-shadow: 0 2px 8px rgba(124,58,237,0.05);
+}
+.lib-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.lib-thumb {
+  height: 120px; display: flex; align-items: center; justify-content: center;
+  font-size: 48px; position: relative;
+}
+.lib-thumb-bg1 { background: linear-gradient(135deg, #F5F3FF, #FDF2F8); }
+.lib-thumb-bg2 { background: linear-gradient(135deg, #FFF7ED, #FFFBF0); }
+.lib-thumb-bg3 { background: linear-gradient(135deg, #ECFDF5, #F0FDF4); }
+.lib-thumb-bg4 { background: linear-gradient(135deg, #EFF6FF, #F0F9FF); }
+.lib-card-fmt {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(255,255,255,0.9); border-radius: 6px;
+  padding: 2px 7px; font-size: 10px; font-weight: 700; color: var(--purple-deep);
+}
+.lib-card-info { padding: 10px 12px 12px; }
+.lib-card-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.lib-card-meta { font-size: 10px; color: var(--text3); margin-top: 3px; display: flex; justify-content: space-between; }
+
+/* ---- TOAST ---- */
+.toast {
+  position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--text); color: white; border-radius: 14px;
+  padding: 10px 20px; font-size: 13px; font-weight: 700;
+  opacity: 0; transition: all 0.3s; z-index: 9999; white-space: nowrap;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---- MODAL ---- */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(30,27,46,0.5);
+  z-index: 999; display: none; align-items: flex-end; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-sheet {
+  background: var(--bg); border-radius: 28px 28px 0 0;
+  padding: 20px 22px 36px; width: 100%; max-width: 390px;
+  animation: slideUp 0.3s ease;
+}
+.modal-handle { width: 40px; height: 4px; background: var(--border2); border-radius: 20px; margin: 0 auto 20px; }
+.modal-title { font-size: 17px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+.modal-sub { font-size: 12px; color: var(--text2); margin-bottom: 16px; font-family: 'Nunito Sans', sans-serif; line-height: 1.6; }
+
+/* ---- ANIMATIONS ---- */
+@keyframes float { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-8px) scale(1.1); } }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(0.92); } }
+@keyframes shimmer { 0% { left: -100%; } 100% { left: 200%; } }
+@keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes pop { 0% { transform: scale(0.8); opacity: 0; } 70% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes rotate3d { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+
+.pop-in { animation: pop 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+
+/* Desktop wrapper */
+@media (min-width: 500px) {
+  body { display: flex; align-items: flex-start; justify-content: center; min-height: 100vh; background: linear-gradient(145deg, #C4B5FD 0%, #F9A8D4 50%, #A5F3FC 100%); }
+  .phone-shell { position: relative; }
+}
+</style>
+</head>
+<body>
+
+<div class="phone-shell" id="app">
+  <!-- Notch -->
+  <div style="display:flex; justify-content:center; background:var(--bg); padding-top:8px;">
+    <div class="phone-notch">
+      <div class="notch-dot"></div>
+      <div class="notch-cam"></div>
+      <div class="notch-dot"></div>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <span>9:41</span>
+    <span style="display:flex;align-items:center;gap:4px;">
+      <span>📶</span><span>🔋</span>
+    </span>
+  </div>
+
+  <!-- ============ HOME SCREEN ============ -->
+  <div class="screen active" id="screen-home">
+    <div class="home-header">
+      <div class="logo-text">snap<span>3D</span></div>
+      <div class="avatar-btn">🐣</div>
+    </div>
+
+    <div class="home-hero">
+      <div class="hero-badge">
+        <span>✨</span>
+        <span>AI驱动 · 3分钟出模型</span>
+      </div>
+      <div class="hero-h1">拍一拍，<br><span class="accent">变成</span><span class="accent2">3D</span>啦！</div>
+      <div class="hero-sub">上传照片，AI自动重建三维模型<br>支持STL、OBJ等格式，可直接打印</div>
+    </div>
+
+    <div class="upload-card" id="home-upload" onclick="goToUpload()">
+      <div class="upload-sparkles">
+        <div class="sparkle" style="left:15%;top:20%;background:#C084FC;animation-delay:0s;"></div>
+        <div class="sparkle" style="left:80%;top:30%;background:#FB7185;animation-delay:0.5s;"></div>
+        <div class="sparkle" style="left:60%;top:75%;background:#34D399;animation-delay:1s;"></div>
+        <div class="sparkle" style="left:25%;top:70%;background:#FBBF24;animation-delay:1.5s;"></div>
+      </div>
+      <div class="upload-icon-wrap">📷</div>
+      <div class="upload-title">点击上传 / 拖拽图片</div>
+      <div class="upload-sub">单张或多张，每次最多20张</div>
+      <div class="upload-actions">
+        <button class="upload-btn" onclick="event.stopPropagation();addMockImages()">🖼 从相册选取</button>
+        <button class="upload-btn secondary" onclick="event.stopPropagation();goToUpload()">📷 拍照</button>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-chip">JPG</span>
+        <span class="fmt-chip">PNG</span>
+        <span class="fmt-chip">HEIC</span>
+        <span class="fmt-chip">WEBP</span>
+        <span class="fmt-chip">≤20MB</span>
+      </div>
+    </div>
+
+    <div class="tip-banner">
+      <div class="tip-emoji">💡</div>
+      <div class="tip-text"><strong>小技巧：</strong>围绕物体旋转拍摄12~24张，每次转15°，背景越纯效果越好，建议在均匀光线下拍摄！</div>
+    </div>
+
+    <div class="guide-section">
+      <div class="section-hd">拍摄指南</div>
+      <div class="guide-row">
+        <div class="guide-card"><div class="guide-num">1</div><div class="guide-em">🎯</div><div class="guide-lbl">物体居中放置</div></div>
+        <div class="guide-card"><div class="guide-num">2</div><div class="guide-em">🔄</div><div class="guide-lbl">围绕旋转拍摄</div></div>
+        <div class="guide-card"><div class="guide-num">3</div><div class="guide-em">💡</div><div class="guide-lbl">均匀光线</div></div>
+        <div class="guide-card"><div class="guide-num">4</div><div class="guide-em">🎨</div><div class="guide-lbl">纯色背景</div></div>
+        <div class="guide-card"><div class="guide-num">5</div><div class="guide-em">📐</div><div class="guide-lbl">多角度覆盖</div></div>
+      </div>
+    </div>
+
+    <div class="recent-section">
+      <div class="section-hd">最近模型</div>
+      <div class="recent-row">
+        <div class="recent-card" onclick="goToPreview()">
+          <div class="recent-thumb" style="background:linear-gradient(135deg,#F5F3FF,#FDF2F8);">🏺<div class="recent-status">STL</div></div>
+          <div class="recent-info"><div class="recent-name">花瓶模型</div><div class="recent-meta">2天前 · 58K面</div></div>
+        </div>
+        <div class="recent-card" onclick="goToPreview()">
+          <div class="recent-thumb" style="background:linear-gradient(135deg,#FFF7ED,#FFFBF0);">🐉<div class="recent-status">OBJ</div></div>
+          <div class="recent-info"><div class="recent-name">小恐龙</div><div class="recent-meta">5天前 · 42K面</div></div>
+        </div>
+        <div class="recent-card" onclick="goToPreview()">
+          <div class="recent-thumb" style="background:linear-gradient(135deg,#ECFDF5,#F0FDF4);">🏠<div class="recent-status">GLB</div></div>
+          <div class="recent-info"><div class="recent-name">小房子</div><div class="recent-meta">1周前 · 31K面</div></div>
+        </div>
+        <div class="recent-card" onclick="goToPreview()">
+          <div class="recent-thumb" style="background:linear-gradient(135deg,#EFF6FF,#F0F9FF);">🌸<div class="recent-status">STL</div></div>
+          <div class="recent-info"><div class="recent-name">花朵</div><div class="recent-meta">2周前 · 22K面</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- nav -->
+    <div style="flex:1;"></div>
+    <div class="bottom-nav">
+      <div class="nav-item active"><div class="nav-icon">🏠</div><div class="nav-label">首页</div></div>
+      <div class="nav-item" onclick="goToLibrary()"><div class="nav-icon">📦</div><div class="nav-label">模型库</div></div>
+      <div class="nav-item" onclick="goToPrint()"><div class="nav-icon">🖨</div><div class="nav-label">打印机</div></div>
+      <div class="nav-item"><div class="nav-icon">👤</div><div class="nav-label">我的</div></div>
+    </div>
+  </div>
+
+  <!-- ============ UPLOAD SCREEN ============ -->
+  <div class="screen" id="screen-upload">
+    <div class="screen-header">
+      <button class="back-btn" onclick="goHome()">←</button>
+      <div class="screen-title">选择图片</div>
+    </div>
+
+    <div class="img-count-bar">
+      <div class="img-count">已选 <span id="img-count-num">0</span> 张（建议12~24张）</div>
+      <div style="font-size:11px;color:var(--text3);font-weight:600;">最多20张</div>
+    </div>
+
+    <div class="img-grid" id="img-grid">
+      <div class="img-add-cell" onclick="addMockImages()">
+        <span>+</span>
+        <span class="img-add-label">添加图片</span>
+      </div>
+    </div>
+
+    <div class="quality-section">
+      <div class="section-hd">模型精度</div>
+      <div class="quality-cards">
+        <div class="quality-opt" onclick="selectQuality('fast',this)">
+          <div class="q-em">⚡</div>
+          <div class="q-name">快速</div>
+          <div class="q-time">约1分钟</div>
+        </div>
+        <div class="quality-opt selected" onclick="selectQuality('mid',this)">
+          <div class="q-em">✨</div>
+          <div class="q-name">标准</div>
+          <div class="q-time">约3分钟</div>
+        </div>
+        <div class="quality-opt" onclick="selectQuality('high',this)">
+          <div class="q-em">🔬</div>
+          <div class="q-name">高精度</div>
+          <div class="q-time">约8分钟</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:12px 22px 0;">
+      <div class="section-hd">高级选项</div>
+      <div style="background:white;border:1px solid var(--border);border-radius:var(--r-sm);padding:14px;margin-top:10px;display:flex;flex-direction:column;gap:12px;box-shadow:0 2px 8px rgba(124,58,237,0.05);">
+        <div class="toggle-row">
+          <span class="toggle-label">封闭网格（适合3D打印）</span>
+          <div class="toggle-switch on" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">自动去除背景</span>
+          <div class="toggle-switch on" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">生成高清纹理</span>
+          <div class="toggle-switch" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1;"></div>
+    <button class="generate-btn" id="gen-btn" onclick="startGenerate()" disabled>
+      <span>🚀</span> 开始生成3D模型
+    </button>
+  </div>
+
+  <!-- ============ PROGRESS SCREEN ============ -->
+  <div class="screen" id="screen-progress">
+    <div class="screen-header">
+      <button class="back-btn" onclick="goToUpload()">←</button>
+      <div class="screen-title">生成中</div>
+    </div>
+
+    <div class="progress-hero">
+      <div class="model-3d-container">
+        <canvas id="three-canvas"></canvas>
+      </div>
+      <div class="progress-title" id="progress-title">正在生成3D模型…</div>
+      <div class="progress-sub">AI正在从您的照片中重建立体世界</div>
+      <div class="progress-phase">
+        <div class="phase-dot"></div>
+        <span id="phase-text">特征点提取中</span>
+      </div>
+    </div>
+
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <div class="progress-pct" id="progress-pct">0%</div>
+
+    <div class="progress-stats">
+      <div class="stat-card">
+        <div class="stat-val" id="stat-imgs">12</div>
+        <div class="stat-lbl">已处理图片</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="stat-time">—</div>
+        <div class="stat-lbl">预计剩余</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="stat-verts">—</div>
+        <div class="stat-lbl">顶点数</div>
+      </div>
+    </div>
+
+    <div class="steps-timeline">
+      <div class="section-hd">处理步骤</div>
+      <div id="steps-list"></div>
+    </div>
+  </div>
+
+  <!-- ============ PREVIEW SCREEN ============ -->
+  <div class="screen" id="screen-preview">
+    <div class="model-preview-area">
+      <canvas id="preview-canvas"></canvas>
+      <div class="quality-badge">✅ 可打印 · 封闭网格</div>
+      <div class="view-controls">
+        <button class="view-btn active" onclick="setViewMode('solid',this)">实体</button>
+        <button class="view-btn" onclick="setViewMode('wire',this)">线框</button>
+        <button class="view-btn" onclick="setViewMode('texture',this)">纹理</button>
+      </div>
+    </div>
+
+    <div class="model-info-card">
+      <div>
+        <div class="model-name">我的3D模型</div>
+        <div class="model-meta">58,241 面 · 封闭网格 · 约 3.2MB</div>
+      </div>
+      <div class="model-score">
+        <div class="score-num">92</div>
+        <div class="score-lbl">质量分</div>
+      </div>
+    </div>
+
+    <div class="edit-tools">
+      <div class="section-hd">编辑工具</div>
+      <div class="tool-row">
+        <div class="tool-chip active" onclick="selectTool('scale',this)"><span class="tool-em">📐</span><span class="tool-lbl">缩放</span></div>
+        <div class="tool-chip" onclick="selectTool('rotate',this)"><span class="tool-em">🔄</span><span class="tool-lbl">旋转</span></div>
+        <div class="tool-chip" onclick="selectTool('fix',this)"><span class="tool-em">🔧</span><span class="tool-lbl">修复</span></div>
+        <div class="tool-chip" onclick="selectTool('mirror',this)"><span class="tool-em">🪞</span><span class="tool-lbl">镜像</span></div>
+        <div class="tool-chip" onclick="selectTool('section',this)"><span class="tool-em">✂️</span><span class="tool-lbl">截面</span></div>
+      </div>
+    </div>
+
+    <div class="edit-panel" id="edit-panel-scale">
+      <div class="slider-row">
+        <div class="slider-label"><span class="slider-name">X 缩放</span><span class="slider-val" id="sx-val">100%</span></div>
+        <input type="range" min="10" max="300" value="100" oninput="document.getElementById('sx-val').textContent=this.value+'%'">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span class="slider-name">Y 缩放</span><span class="slider-val" id="sy-val">100%</span></div>
+        <input type="range" min="10" max="300" value="100" oninput="document.getElementById('sy-val').textContent=this.value+'%'">
+      </div>
+      <div class="slider-row" style="margin-bottom:4px;">
+        <div class="slider-label"><span class="slider-name">Z 缩放</span><span class="slider-val" id="sz-val">100%</span></div>
+        <input type="range" min="10" max="300" value="100" oninput="document.getElementById('sz-val').textContent=this.value+'%'">
+      </div>
+      <div class="toggle-row" style="margin-top:10px;">
+        <span class="toggle-label">等比缩放</span>
+        <div class="toggle-switch on" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div>
+      </div>
+    </div>
+
+    <div class="export-section">
+      <div class="section-hd">导出格式</div>
+      <div class="format-grid" id="fmt-grid">
+        <div class="fmt-opt selected" onclick="selectFmt('STL',this)">
+          <div><div class="fmt-name">STL</div><div class="fmt-desc">3D打印标准格式</div></div>
+        </div>
+        <div class="fmt-opt" onclick="selectFmt('OBJ',this)">
+          <div><div class="fmt-name">OBJ</div><div class="fmt-desc">通用建模格式</div></div>
+        </div>
+        <div class="fmt-opt" onclick="selectFmt('GLB',this)">
+          <div><div class="fmt-name">GLB</div><div class="fmt-desc">Web / AR展示</div></div>
+        </div>
+        <div class="fmt-opt" onclick="selectFmt('3MF',this)">
+          <div><div class="fmt-name">3MF</div><div class="fmt-desc">彩色打印格式</div></div>
+        </div>
+        <div class="fmt-opt" onclick="selectFmt('PLY',this)">
+          <div><div class="fmt-name">PLY</div><div class="fmt-desc">点云格式</div></div>
+        </div>
+        <div class="fmt-opt" onclick="selectFmt('STEP',this)">
+          <div>
+            <div class="fmt-name">STEP <span class="fmt-tag-pro">Pro✨</span></div>
+            <div class="fmt-desc">工程CAD格式</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-btns">
+      <button class="btn-dl" onclick="downloadModel()">⬇ 下载 <span id="dl-fmt">STL</span></button>
+      <div class="btn-icon-sq" onclick="goToPrint()" title="发送到打印机">🖨</div>
+      <div class="btn-icon-sq" onclick="showToast('模型已分享 🎉')" title="分享">↗</div>
+    </div>
+  </div>
+
+  <!-- ============ PRINT SCREEN ============ -->
+  <div class="screen" id="screen-print">
+    <div class="screen-header">
+      <button class="back-btn" onclick="goHome()">←</button>
+      <div class="screen-title">打印机</div>
+    </div>
+
+    <div class="printer-connect">
+      <div class="printer-hero">
+        <div class="printer-em">🖨</div>
+        <div class="printer-title">连接你的3D打印机</div>
+        <div class="printer-sub">支持 OctoPrint · Bambu Lab · Klipper<br>绑定后可一键传输模型直接打印</div>
+      </div>
+
+      <div class="section-hd" style="margin-bottom:10px;">已发现设备</div>
+      <div class="printer-list">
+        <div class="printer-card connected">
+          <div class="printer-icon">🟢</div>
+          <div class="printer-info">
+            <div class="printer-name">Bambu Lab X1C</div>
+            <div class="printer-detail">192.168.1.100 · OctoPrint v1.9</div>
+          </div>
+          <div class="printer-badge conn">已连接</div>
+        </div>
+        <div class="printer-card" onclick="connectPrinter(this)">
+          <div class="printer-icon">🖨</div>
+          <div class="printer-info">
+            <div class="printer-name">Creality Ender 3</div>
+            <div class="printer-detail">192.168.1.105 · Klipper</div>
+          </div>
+          <div class="printer-badge avail">连接</div>
+        </div>
+        <div class="printer-card" onclick="connectPrinter(this)">
+          <div class="printer-icon">🖨</div>
+          <div class="printer-info">
+            <div class="printer-name">Prusa MK4</div>
+            <div class="printer-detail">192.168.1.108 · PrusaLink</div>
+          </div>
+          <div class="printer-badge avail">连接</div>
+        </div>
+      </div>
+      <button class="add-printer-btn" onclick="showToast('请输入打印机IP地址')">+ 手动添加打印机</button>
+    </div>
+
+    <div class="slice-section">
+      <div class="section-hd">切片设置</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:6px;">层高</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div class="slice-opt selected" onclick="toggleSlice(this)"><div class="slice-label">0.2mm 标准</div><div class="slice-val">推荐</div></div>
+            <div class="slice-opt" onclick="toggleSlice(this)"><div class="slice-label">0.1mm 精细</div><div class="slice-val">+50%时间</div></div>
+            <div class="slice-opt" onclick="toggleSlice(this)"><div class="slice-label">0.3mm 快速</div><div class="slice-val">-30%时间</div></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:6px;">填充密度</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div class="slice-opt selected" onclick="toggleSlice(this)"><div class="slice-label">15% 轻量</div><div class="slice-val">展示用</div></div>
+            <div class="slice-opt" onclick="toggleSlice(this)"><div class="slice-label">30% 标准</div><div class="slice-val">推荐</div></div>
+            <div class="slice-opt" onclick="toggleSlice(this)"><div class="slice-label">60% 密实</div><div class="slice-val">承重用</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--teal-light);border:1px solid rgba(52,211,153,0.3);border-radius:var(--r-sm);padding:14px;margin-top:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:13px;font-weight:700;color:#065F46;">预估信息</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center;">
+          <div><div style="font-size:18px;font-weight:900;color:#065F46;">2h 34m</div><div style="font-size:10px;color:#059669;font-weight:600;">打印时长</div></div>
+          <div><div style="font-size:18px;font-weight:900;color:#065F46;">18g</div><div style="font-size:10px;color:#059669;font-weight:600;">耗材用量</div></div>
+          <div><div style="font-size:18px;font-weight:900;color:#065F46;">¥0.9</div><div style="font-size:10px;color:#059669;font-weight:600;">材料成本</div></div>
+        </div>
+      </div>
+    </div>
+
+    <button class="send-to-printer-btn" onclick="sendToPrinter()">
+      🖨 发送到 Bambu Lab X1C
+    </button>
+
+    <div style="flex:1;"></div>
+    <div class="bottom-nav">
+      <div class="nav-item" onclick="goHome()"><div class="nav-icon">🏠</div><div class="nav-label">首页</div></div>
+      <div class="nav-item" onclick="goToLibrary()"><div class="nav-icon">📦</div><div class="nav-label">模型库</div></div>
+      <div class="nav-item active"><div class="nav-icon">🖨</div><div class="nav-label">打印机</div></div>
+      <div class="nav-item"><div class="nav-icon">👤</div><div class="nav-label">我的</div></div>
+    </div>
+  </div>
+
+  <!-- ============ LIBRARY SCREEN ============ -->
+  <div class="screen" id="screen-library">
+    <div class="screen-header">
+      <button class="back-btn" onclick="goHome()">←</button>
+      <div class="screen-title">模型库</div>
+    </div>
+
+    <div class="library-search">
+      <span class="lib-search-icon">🔍</span>
+      <input class="lib-search-input" type="text" placeholder="搜索模型名称…">
+    </div>
+
+    <div class="lib-filter-row">
+      <button class="filter-chip active" onclick="filterLib('all',this)">全部</button>
+      <button class="filter-chip" onclick="filterLib('stl',this)">STL</button>
+      <button class="filter-chip" onclick="filterLib('obj',this)">OBJ</button>
+      <button class="filter-chip" onclick="filterLib('glb',this)">GLB</button>
+      <button class="filter-chip" onclick="filterLib('print',this)">已打印</button>
+    </div>
+
+    <div class="lib-grid">
+      <div class="lib-card" onclick="goToPreview()">
+        <div class="lib-thumb lib-thumb-bg1"><span>🏺</span><span class="lib-card-fmt">STL</span></div>
+        <div class="lib-card-info"><div class="lib-card-name">花瓶模型</div><div class="lib-card-meta"><span>58K面</span><span>3.2MB</span></div></div>
+      </div>
+      <div class="lib-card" onclick="goToPreview()">
+        <div class="lib-thumb lib-thumb-bg2"><span>🐉</span><span class="lib-card-fmt">OBJ</span></div>
+        <div class="lib-card-info"><div class="lib-card-name">小恐龙</div><div class="lib-card-meta"><span>42K面</span><span>2.1MB</span></div></div>
+      </div>
+      <div class="lib-card" onclick="goToPreview()">
+        <div class="lib-thumb lib-thumb-bg3"><span>🏠</span><span class="lib-card-fmt">GLB</span></div>
+        <div class="lib-card-info"><div class="lib-card-name">小房子</div><div class="lib-card-meta"><span>31K面</span><span>1.8MB</span></div></div>
+      </div>
+      <div class="lib-card" onclick="goToPreview()">
+        <div class="lib-thumb lib-thumb-bg4"><span>🌸</span><span class="lib-card-fmt">STL</span></div>
+        <div class="lib-card-info"><div class="lib-card-name">花朵</div><div class="lib-card-meta"><span>22K面</span><span>1.1MB</span></div></div>
+      </div>
+      <div class="lib-card" onclick="goToPreview()">
+        <div class="lib-thumb lib-thumb-bg1"><span>🐱</span><span class="lib-card-fmt">3MF</span></div>
+        <div class="lib-card-info"><div class="lib-card-name">猫咪</div><div class="lib-card-meta"><span>67K面</span><span>4.5MB</span></div></div>
+      </div>
+      <div class="lib-card" onclick="goToPreview()">
+        <div class="lib-thumb lib-thumb-bg2"><span>🚀</span><span class="lib-card-fmt">STL</span></div>
+        <div class="lib-card-info"><div class="lib-card-name">火箭</div><div class="lib-card-meta"><span>18K面</span><span>0.9MB</span></div></div>
+      </div>
+    </div>
+
+    <div style="flex:1;"></div>
+    <div class="bottom-nav">
+      <div class="nav-item" onclick="goHome()"><div class="nav-icon">🏠</div><div class="nav-label">首页</div></div>
+      <div class="nav-item active"><div class="nav-icon">📦</div><div class="nav-label">模型库</div></div>
+      <div class="nav-item" onclick="goToPrint()"><div class="nav-icon">🖨</div><div class="nav-label">打印机</div></div>
+      <div class="nav-item"><div class="nav-icon">👤</div><div class="nav-label">我的</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Success Modal -->
+<div class="modal-overlay" id="success-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:56px;margin-bottom:12px;">🎉</div>
+      <div class="modal-title">3D模型生成完成！</div>
+      <div class="modal-sub">您的模型已成功生成，质量评分 92/100，是封闭网格，可以直接打印！</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button style="width:100%;padding:14px;background:linear-gradient(135deg,var(--purple-deep),#9333EA);color:white;border:none;border-radius:var(--r);font-size:15px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;" onclick="closeModal();goToPreview()">🎨 查看并编辑模型</button>
+      <button style="width:100%;padding:14px;background:white;color:var(--text2);border:1.5px solid var(--border2);border-radius:var(--r);font-size:14px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;" onclick="closeModal();downloadModel()">⬇ 直接下载 STL</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- STATE ----
+let uploadedImages = [];
+let selectedQuality = 'mid';
+let selectedFormat = 'STL';
+let progressInterval = null;
+let progressVal = 0;
+
+const phases = ['特征点提取中','稀疏点云重建','深度图估计','密集重建中','网格生成中','纹理烘焙中','优化封闭网格','最终质检中'];
+const stepDefs = [
+  {name:'图片分析',desc:'检测特征点，计算相机位姿'},
+  {name:'稀疏重建',desc:'生成初始点云结构'},
+  {name:'深度估计',desc:'多视图深度图融合'},
+  {name:'密集建图',desc:'生成高密度三维点云'},
+  {name:'网格化',desc:'泊松曲面重建'},
+  {name:'纹理映射',desc:'贴图UV展开与烘焙'},
+  {name:'质量优化',desc:'去噪、填洞、封闭处理'},
+];
+
+const mockEmojis = ['🏺','🐉','🏠','🌸','🐱','🚀','🎮','🏔','🎸','🦊','🌮','🏋'];
+
+// ---- NAV ----
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+}
+function goHome() { showScreen('home'); }
+function goToUpload() { showScreen('upload'); }
+function goToPreview() { showScreen('preview'); requestAnimationFrame(()=>requestAnimationFrame(()=>initPreview())); }
+function goToPrint() { showScreen('print'); }
+function goToLibrary() { showScreen('library'); }
+
+// ---- IMAGES ----
+const mockColors = [
+  'linear-gradient(135deg,#F5F3FF,#FDF2F8)',
+  'linear-gradient(135deg,#FFF7ED,#FFFBF0)',
+  'linear-gradient(135deg,#ECFDF5,#F0FDF4)',
+  'linear-gradient(135deg,#EFF6FF,#F0F9FF)',
+];
+function addMockImages() {
+  goToUpload();
+  const count = Math.floor(Math.random()*8)+8;
+  uploadedImages = [];
+  const grid = document.getElementById('img-grid');
+  grid.innerHTML = '';
+  for(let i=0;i<count;i++) {
+    const cell = document.createElement('div');
+    cell.className = 'img-cell pop-in';
+    cell.style.animationDelay = (i*0.04)+'s';
+    cell.style.background = mockColors[i%4];
+    cell.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;">${mockEmojis[i%mockEmojis.length]}</div><button class="del-btn" onclick="removeImg(this.parentElement,event)">×</button>`;
+    grid.appendChild(cell);
+    uploadedImages.push(i);
+  }
+  const addCell = document.createElement('div');
+  addCell.className = 'img-add-cell';
+  addCell.innerHTML = '<span>+</span><span class="img-add-label">添加图片</span>';
+  addCell.onclick = addMoreImages;
+  grid.appendChild(addCell);
+  updateImgCount();
+}
+function addMoreImages() {
+  if(uploadedImages.length >= 20) { showToast('最多上传20张哦！'); return; }
+  const grid = document.getElementById('img-grid');
+  const addCell = grid.querySelector('.img-add-cell');
+  const cell = document.createElement('div');
+  cell.className = 'img-cell pop-in';
+  cell.style.background = mockColors[uploadedImages.length%4];
+  cell.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;">${mockEmojis[uploadedImages.length%mockEmojis.length]}</div><button class="del-btn" onclick="removeImg(this.parentElement,event)">×</button>`;
+  grid.insertBefore(cell, addCell);
+  uploadedImages.push(uploadedImages.length);
+  updateImgCount();
+}
+function removeImg(cell, e) {
+  e.stopPropagation();
+  cell.style.transform = 'scale(0)'; cell.style.opacity = '0'; cell.style.transition = 'all 0.2s';
+  setTimeout(()=>{ cell.remove(); uploadedImages.pop(); updateImgCount(); },200);
+}
+function updateImgCount() {
+  const n = document.querySelectorAll('#img-grid .img-cell').length;
+  document.getElementById('img-count-num').textContent = n;
+  document.getElementById('gen-btn').disabled = n === 0;
+}
+
+function selectQuality(q, el) {
+  selectedQuality = q;
+  document.querySelectorAll('.quality-opt').forEach(o=>o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// ---- GENERATE ----
+function startGenerate() {
+  const n = document.querySelectorAll('#img-grid .img-cell').length;
+  document.getElementById('stat-imgs').textContent = n;
+  showScreen('progress');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ initThreeProgress(); startProgressAnim(); }));
+}
+
+function startProgressAnim() {
+  progressVal = 0;
+  let phaseIdx = 0;
+  updateStepsList(0);
+  const timings = [0,12,24,38,52,66,80,92,100];
+  const phaseDuration = 3200;
+  let stepTimer = 0;
+
+  progressInterval = setInterval(()=>{
+    progressVal += 0.4;
+    if(progressVal > 100) progressVal = 100;
+    document.getElementById('progress-fill').style.width = progressVal+'%';
+    document.getElementById('progress-pct').textContent = Math.round(progressVal)+'%';
+
+    // phase update
+    let pi = timings.findIndex(t=>progressVal < t);
+    if(pi < 0) pi = phases.length-1; else pi = Math.max(0,pi-1);
+    if(pi < phases.length) document.getElementById('phase-text').textContent = phases[pi];
+
+    // step update
+    let stepDone = Math.floor(progressVal / (100/stepDefs.length));
+    updateStepsList(stepDone);
+
+    // verts
+    if(progressVal > 50) document.getElementById('stat-verts').textContent = Math.round(progressVal*600).toLocaleString();
+
+    // time remaining
+    const remain = Math.max(0, Math.round((100-progressVal)/100 * (selectedQuality==='fast'?60:selectedQuality==='mid'?180:480)));
+    document.getElementById('stat-time').textContent = remain > 60 ? Math.ceil(remain/60)+'分钟' : remain+'秒';
+
+    if(progressVal >= 100) {
+      clearInterval(progressInterval);
+      document.getElementById('progress-title').textContent = '生成完成！🎉';
+      document.getElementById('phase-text').textContent = '全部完成';
+      document.querySelector('.phase-dot').style.animation = 'none';
+      document.querySelector('.phase-dot').style.background = 'var(--teal)';
+      updateStepsList(99);
+      setTimeout(()=>{ document.getElementById('success-modal').classList.add('open'); },800);
+    }
+  }, 40);
+}
+
+function updateStepsList(doneCount) {
+  const list = document.getElementById('steps-list');
+  list.innerHTML = '';
+  stepDefs.forEach((s,i)=>{
+    let cls = i < doneCount ? 'done' : i === doneCount ? 'active' : 'pending';
+    let icon = cls==='done'?'✓':cls==='active'?(i+1):'◦';
+    list.innerHTML += `<div class="step-item"><div class="step-dot ${cls}">${icon}</div><div class="step-info"><div class="step-name">${s.name}</div><div class="step-desc">${s.desc}</div></div></div>`;
+  });
+}
+
+// ---- THREE.JS - Progress ----
+let progressScene, progressCamera, progressRenderer, progressMesh, progressAnimFrame;
+function initThreeProgress() {
+  const canvas = document.getElementById('three-canvas');
+  if(progressRenderer) { progressRenderer.dispose(); cancelAnimationFrame(progressAnimFrame); }
+  progressScene = new THREE.Scene();
+  progressCamera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+  progressCamera.position.set(0,0,3);
+  progressRenderer = new THREE.WebGLRenderer({canvas, alpha:true, antialias:true});
+  progressRenderer.setSize(200, 200);
+  progressRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  canvas.style.width = '200px';
+  canvas.style.height = '200px';
+
+  const geo = new THREE.IcosahedronGeometry(1,2);
+  const mat = new THREE.MeshPhongMaterial({color:0xA78BFA,wireframe:false,shininess:80,specular:0xFFBBFF});
+  progressMesh = new THREE.Mesh(geo,mat);
+  progressScene.add(progressMesh);
+  const light1 = new THREE.DirectionalLight(0xFFFFFF,1.2); light1.position.set(2,3,4); progressScene.add(light1);
+  const light2 = new THREE.AmbientLight(0xF0E0FF,0.5); progressScene.add(light2);
+  const light3 = new THREE.PointLight(0xFB7185,0.8,10); light3.position.set(-2,-1,2); progressScene.add(light3);
+
+  function animLoop() {
+    progressAnimFrame = requestAnimationFrame(animLoop);
+    progressMesh.rotation.x += 0.008;
+    progressMesh.rotation.y += 0.014;
+    progressMesh.scale.setScalar(1 + Math.sin(Date.now()*0.002)*0.05);
+    progressRenderer.render(progressScene,progressCamera);
+  }
+  animLoop();
+}
+
+// ---- THREE.JS - Preview ----
+let previewScene, previewCamera, previewRenderer, previewMesh, previewAnimFrame;
+let isDragging=false, lastX=0, lastY=0;
+function initPreview() {
+  const canvas = document.getElementById('preview-canvas');
+  if(previewRenderer) { previewRenderer.dispose(); cancelAnimationFrame(previewAnimFrame); }
+
+  // screen is display:none when first called → offsetWidth=0, use parent or fixed width
+  const W = 390;
+  const H = 260;
+
+  previewScene = new THREE.Scene();
+  previewCamera = new THREE.PerspectiveCamera(50, W/H, 0.1, 100);
+  previewCamera.position.set(0,1.5,4);
+  previewCamera.lookAt(0,0,0);
+  previewRenderer = new THREE.WebGLRenderer({canvas, alpha:true, antialias:true});
+  previewRenderer.setSize(W, H);
+  previewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // make canvas fill its container via CSS
+  canvas.style.width  = '100%';
+  canvas.style.height = H + 'px';
+
+  const geo = new THREE.TorusKnotGeometry(0.7,0.28,100,16);
+  const mat = new THREE.MeshPhongMaterial({color:0xC084FC,shininess:120,specular:0xFFBBFF});
+  previewMesh = new THREE.Mesh(geo,mat);
+  previewScene.add(previewMesh);
+  const grid = new THREE.GridHelper(4,10,0xDDD6FE,0xEDE9FE);
+  grid.position.y = -1.1;
+  previewScene.add(grid);
+  const l1 = new THREE.DirectionalLight(0xFFFFFF,1.5); l1.position.set(3,5,3); previewScene.add(l1);
+  const l2 = new THREE.AmbientLight(0xF5F0FF,0.6); previewScene.add(l2);
+  const l3 = new THREE.PointLight(0xFB7185,0.8,8); l3.position.set(-2,2,1); previewScene.add(l3);
+
+  canvas.addEventListener('mousedown',e=>{isDragging=true;lastX=e.clientX;lastY=e.clientY;});
+  canvas.addEventListener('mousemove',e=>{if(!isDragging)return;const dx=e.clientX-lastX,dy=e.clientY-lastY;previewMesh.rotation.y+=dx*0.01;previewMesh.rotation.x+=dy*0.01;lastX=e.clientX;lastY=e.clientY;});
+  canvas.addEventListener('mouseup',()=>isDragging=false);
+  canvas.addEventListener('touchstart',e=>{lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;},{passive:true});
+  canvas.addEventListener('touchmove',e=>{const dx=e.touches[0].clientX-lastX,dy=e.touches[0].clientY-lastY;previewMesh.rotation.y+=dx*0.012;previewMesh.rotation.x+=dy*0.012;lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;},{passive:true});
+
+  function animLoop() {
+    previewAnimFrame = requestAnimationFrame(animLoop);
+    if(!isDragging) previewMesh.rotation.y += 0.006;
+    previewRenderer.render(previewScene,previewCamera);
+  }
+  animLoop();
+}
+
+function setViewMode(mode, btn) {
+  document.querySelectorAll('.view-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(!previewMesh) return;
+  if(mode==='wire') { previewMesh.material.wireframe=true; previewMesh.material.color.set(0x7C3AED); }
+  else if(mode==='solid') { previewMesh.material.wireframe=false; previewMesh.material.color.set(0xC084FC); }
+  else { previewMesh.material.wireframe=false; previewMesh.material.color.set(0xF472B6); }
+}
+
+function selectTool(t, el) {
+  document.querySelectorAll('.tool-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('edit-panel-scale').style.display = t==='scale'?'block':'none';
+  if(t==='fix') showToast('自动修复中… 🔧');
+  if(t==='mirror') showToast('选择镜像轴');
+}
+
+function selectFmt(fmt, el) {
+  selectedFormat = fmt;
+  document.querySelectorAll('.fmt-opt').forEach(f=>f.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('dl-fmt').textContent = fmt;
+  if(fmt==='STEP') showToast('STEP格式需要升级Pro版 ✨');
+}
+
+function downloadModel() {
+  showToast(`正在下载 model.${selectedFormat.toLowerCase()} ⬇`);
+}
+
+function selectTool2(t) { }
+
+// ---- PRINTER ----
+function connectPrinter(card) {
+  card.classList.add('connected');
+  card.querySelector('.printer-badge').className = 'printer-badge conn';
+  card.querySelector('.printer-badge').textContent = '已连接';
+  showToast('打印机连接成功 🖨✅');
+}
+function sendToPrinter() {
+  const btn = document.querySelector('.send-to-printer-btn');
+  btn.textContent = '⏳ 传输中…';
+  setTimeout(()=>{
+    btn.textContent = '✅ 已发送！开始打印';
+    btn.style.background = 'linear-gradient(135deg,#065F46,#059669)';
+    showToast('模型已发送到打印机！🎉');
+  },2000);
+}
+
+// ---- LIBRARY ----
+function filterLib(f, el) {
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  showToast(f==='all'?'全部模型':'显示 '+f.toUpperCase()+' 格式');
+}
+
+// ---- MODAL ----
+function closeModal() { document.getElementById('success-modal').classList.remove('open'); }
+
+// ---- TOAST ----
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ---- TOGGLE SLICES ----
+function toggleSlice(el) {
+  const parent = el.parentElement;
+  parent.querySelectorAll('.slice-opt').forEach(o=>o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// Close modal on overlay click
+document.getElementById('success-modal').addEventListener('click', function(e) {
+  if(e.target===this) closeModal();
+});
+
+// Pre-init
+document.getElementById('edit-panel-scale').style.display = 'block';
+</script>
+</body>
+</html>
