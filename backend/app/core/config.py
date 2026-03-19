@@ -1,7 +1,11 @@
-"""snap3D Configuration"""
+"""
+snap3D — Application Configuration
+All settings come from environment variables.
+"""
 from pydantic_settings import BaseSettings
 from typing import List
 import secrets
+
 
 class Settings(BaseSettings):
     APP_ENV: str = "development"
@@ -22,11 +26,13 @@ class Settings(BaseSettings):
     REPLICATE_API_TOKEN: str = ""
     RECONSTRUCTION_PROVIDER: str = "tripo3d"
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173", "https://snap3d.app"]
-    MAX_IMAGES_FREE: int = 20
+    MAX_IMAGE_FREE: int = 20
     MAX_IMAGES_PRO: int = 50
     MAX_FILE_SIZE_MB: int = 20
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
+    OCTOPRIONT_DEFAULT_TIMEOUT: int = 30
+    BAMBU_CLOUD_BASE_URL: str = "https://api.bambulab.com"
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
     class Config:
